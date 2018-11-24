@@ -1,0 +1,193 @@
+﻿<!DOCTYPE html>
+<html style="margin: auto; display:table;">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript">
+    </script>
+    <script>var synth = window.speechSynthesis;</script>
+    <style>
+        .speech {
+            border: 0px solid #DDD;
+            width: 600px;
+            padding: 0;
+            margin: 0;
+            font-family: "Calibri";
+        }
+
+            .speech input {
+                border: 1;
+                width: 240px;
+                display: inline-block;
+                height: 30px;
+            }
+
+            .speech img {
+                float: right;
+                width: 40px;
+            }
+		.floatl{
+
+			float:left;
+			width:40%;
+			padding:10px;
+		}
+		
+		.floatr{
+		
+		    float:right;
+			width:40%
+		}
+
+			
+    </style>
+	
+</head>
+
+<body bgcolor="#e2e2e2">
+    <h1 style="font-family: Calibri;"><center>VOICE ANALYTICS DEMO</center></h1>
+    <h2 ><center><i>Converts Speech to Text, runs NLP and gives entities and tags then gets the sentiment - all in real-time</i></center></h2>
+    <br /><i class="speech"><font color="gray"></font></i>
+
+    <!-- <div class="speech"> -->
+	
+        <div class ="floatl">
+		
+            <h3 class="speech">
+                Issue a Voice Query
+            </h3>
+
+            <textarea style="width: 600px;font-family: Calibri;font-size:x-large" name="q" id="transcript"
+                      placeholder="Your query will appear here after you speak." rows="7" readonly="True"></textarea>
+            <br>
+            <input id="btn_query" type="button" onclick="startDictation()" value = "Record"
+                   style="font-family: Calibri;" />
+            <img src="static/loader.gif" width="25px" align="left" style="float: left" hidden="True" id="loader" />
+            <br><br>
+   
+		
+            <h3 class="speech">Document Retrieval</h3>
+            <textarea style="width: 600px;font-family: Calibri;font-size:x-large;float: left" id="output" rows="7" placeholder="Results will appear here."
+                      readonly="True"></textarea>
+			<br>
+            <input id="btn_speak" type="button" value="Speak" onclick="btnClick()" style="font-family: Calibri;" />
+            <br><br>
+			
+        </div>
+		
+		
+		<div class="floatr">
+		
+             <h3 class="speech">Entities</h3>
+             <textarea style="width: 600px;font-family: Calibri;font-size:x-large" id="nlp_out" rows="5" placeholder="Entities will appear here."
+                      readonly="True"></textarea>
+    		  
+			<br><br><br>
+			
+			<h3 class="speech">Tags</h3>
+             <textarea style="width: 600px;font-family: Calibri;font-size:x-large" id="tag_out" rows="4" placeholder="Tags will appear here."
+                      readonly="True"></textarea>
+    		  
+			<br><br><br>
+        
+            <h3 class="speech">Sentiment</h3>
+             <textarea style="width: 600px;font-family: Calibri;font-size:x-large" id="senti_out" rows="3" placeholder="Sentiment will appear here."
+                      readonly="True"></textarea>
+        	  
+		</div>			  
+    <!-- </div> -->
+
+    <!-- HTML5 Speech Recognition API -->
+    <script>
+            function startDictation() {
+                document.getElementById('transcript').value = '';
+                document.getElementById('output').value = '';
+                if (window.hasOwnProperty('webkitSpeechRecognition')) {
+                    var recognition = new webkitSpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = false;
+                    recognition.lang = "en-US";
+                    recognition.start();
+                    recognition.onresult = function (e) {
+                        document.getElementById('loader').hidden = false;
+                        document.getElementById('transcript').value = e.results[0][0].transcript;
+                        var data = e.results[0][0].transcript;
+						 $.post("http://localhost:5005/nlp_nltk", { "data": data },
+                        function (response) {
+                        document.getElementById('loader').hidden = true;
+                            data = response;
+                            document.getElementById("nlp_out").value = data;
+                        }).error(function (response) {
+                        document.getElementById('loader').hidden = true;
+                            if (response.status == 400)
+                                text = jQuery.parseJSON(response.responseText)["original_exception"];
+                            else
+                                text = "I'm sorry. I did not get that.";
+                            document.getElementById("nlp_out").value = text;
+                        });
+						
+						
+                        var data = e.results[0][0].transcript;
+						 $.post("http://localhost:5005/tag_google", { "data": data },
+                        function (response) {
+                        document.getElementById('loader').hidden = true;
+                            data = response;
+                            document.getElementById("tag_out").value = data;
+                        }).error(function (response) {
+                        document.getElementById('loader').hidden = true;
+                            if (response.status == 400)
+                                text = jQuery.parseJSON(response.responseText)["original_exception"];
+                            else
+                                text = "I'm sorry. I did not get that.";
+                            document.getElementById("tag_out").value = text;
+                        });
+						
+						
+                        var data = e.results[0][0].transcript;
+                        $.post("http://localhost:5005/senti_google", { "data": data },
+                        function (response) {
+                        document.getElementById('loader').hidden = true;
+                            data = response;
+                            document.getElementById("senti_out").value = data;
+                        }).error(function (response) {
+                        document.getElementById('loader').hidden = true;
+                            if (response.status == 400)
+                                text = jQuery.parseJSON(response.responseText)["original_exception"];
+                            else
+                                text = "I'm sorry. I did not get that.";
+                            document.getElementById("senti_out").value = text;
+                        });
+						
+
+                        $.post("http://localhost:5005/news_urls", { "data": data },
+                        function (response) {
+                        document.getElementById('loader').hidden = true;
+                            data = response;
+                            document.getElementById("output").value = data["urls"];
+                        }).error(function (response) {
+                        document.getElementById('loader').hidden = true;
+                            if (response.status == 400)
+                                text = jQuery.parseJSON(response.responseText)["original_exception"];
+                            else
+                                text = "I'm sorry. I did not get that.";
+                            document.getElementById("output").value = text;
+                        });
+                    };
+                    recognition.onerror = function (e) {
+                        recognition.stop();
+                        console.log("Recognition had an error");
+                    }
+                }
+            }
+
+            function btnClick() {
+	                synth.cancel();
+                    var utterThis = new SpeechSynthesisUtterance(document.getElementById("output").value);
+                    utterThis.voice = synth.getVoices()[0];
+                    utterThis.pitch = 1.0;
+                    utterThis.rate = 0.8;
+                    utterThis.onerror = function(e) { console.log("Something went wrong with utterance."); };
+                    synth.speak(utterThis);
+            }
+    </script>
+</body>
+</html>
